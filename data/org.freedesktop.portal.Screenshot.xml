@@ -79,6 +79,41 @@
       <arg type="a{sv}" name="options" direction="in"/>
       <arg type="o" name="handle" direction="out"/>
     </method>
+
+    <!--
+        PickColor:
+        @options: Vardict with optional further information
+        @handle: Object path for the #org.freedesktop.portal.Request object representing this call
+
+        Picks a color.
+
+        There are currently no recognized keys in the @optionsi vardict.
+
+        The following results get returned via the #org.freedesktop.portal.Request::Response signal:
+        <variablelist>
+          <varlistentry>
+            <term>red d</term>
+            <listitem><para>The color's red component.</para></listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>green d</term>
+            <listitem><para>The color's green component.</para></listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>blue d</term>
+            <listitem><para>The color's blue component.</para></listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>alpha d</term>
+            <listitem><para>The color's alpha component.</para></listitem>
+          </varlistentry>
+        </variablelist>
+
+    -->
+    <method name="PickColor">
+      <arg type="a{sv}" name="options" direction="in"/>
+      <arg type="o" name="handle" direction="out"/>
+    </method>
     <property name="version" type="u" access="read"/>
   </interface>
 </node>

@@ -135,9 +135,41 @@ screenshot_done (GObject *source,
   g_task_run_in_thread (task, send_response_in_thread_func);
 }
 
+static void
+pick_color_done (GObject *source,
+                 GAsyncResult *result,
+                 gpointer data)
+{
+  g_autoptr(Request) request = data;
+  guint response = 2;
+  g_autoptr(GVariant) options = NULL;
+  g_autoptr(GError) error = NULL;
+  g_autoptr(GTask) task = NULL;
+
+  if (!xdp_impl_screenshot_call_pick_color_finish (XDP_IMPL_SCREENSHOT (source),
+                                                   &response,
+                                                   &options,
+                                                   result,
+                                                   &error))
+    {
+      g_warning ("A backend call failed: %s", error->message);
+    }
+
+  if (request->exported)
+    {
+      xdp_request_emit_response (XDP_REQUEST (request),
+                                 response,
+                                 options);
+      request_unexport (request);
+    }
+}
+
 static XdpOptionKey screenshot_options[] = {
   { "modal", G_VARIANT_TYPE_BOOLEAN },
   { "interactive", G_VARIANT_TYPE_BOOLEAN }
+};
+
+static XdpOptionKey pick_color_options[] = {
 };
 
 static gboolean
@@ -185,10 +217,54 @@ handle_screenshot (XdpScreenshot *object,
   return TRUE;
 }
 
+static gboolean
+handle_pick_color (XdpScreenshot *object,
+                   GDBusMethodInvocation *invocation,
+                   GVariant *arg_options)
+{
+  Request *request = request_from_invocation (invocation);
+  g_autoptr(GError) error = NULL;
+  g_autoptr(XdpImplRequest) impl_request = NULL;
+  GVariantBuilder opt_builder;
+
+  REQUEST_AUTOLOCK (request);
+
+  impl_request = xdp_impl_request_proxy_new_sync (g_dbus_proxy_get_connection (G_DBUS_PROXY (impl)),
+                                                  G_DBUS_PROXY_FLAGS_NONE,
+                                                  g_dbus_proxy_get_name (G_DBUS_PROXY (impl)),
+                                                  request->id,
+                                                  NULL, &error);
+  if (!impl_request)
+    {
+      g_dbus_method_invocation_return_gerror (invocation, error);
+      return TRUE;
+    }
+
+  request_set_impl_request (request, impl_request);
+  request_export (request, g_dbus_method_invocation_get_connection (invocation));
+
+  g_variant_builder_init (&opt_builder, G_VARIANT_TYPE_VARDICT);
+  xdp_filter_options (arg_options, &opt_builder,
+                      pick_color_options, G_N_ELEMENTS (pick_color_options));
+
+  xdp_impl_screenshot_call_pick_color (impl,
+                                       request->id,
+                                       xdp_app_info_get_id (request->app_info),
+                                       g_variant_builder_end (&opt_builder),
+                                       NULL,
+                                       pick_color_done,
+                                       g_object_ref (request));
+
+  xdp_screenshot_complete_pick_color (object, invocation, request->id);
+
+  return TRUE;
+}
+
 static void
 screenshot_iface_init (XdpScreenshotIface *iface)
 {
   iface->handle_screenshot = handle_screenshot;
+  iface->handle_pick_color = handle_pick_color;
 }
 
 static void

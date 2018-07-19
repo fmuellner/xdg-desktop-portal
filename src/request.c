@@ -221,7 +221,10 @@ get_token (GDBusMethodInvocation *invocation)
     }
   else if (strcmp (interface, "org.freedesktop.portal.Screenshot") == 0)
     {
-      options = g_variant_get_child_value (parameters, 1);
+      if (strcmp (method, "Screenshot") == 0)
+        options = g_variant_get_child_value (parameters, 1);
+      else if (strcmp (method, "PickColor") == 0)
+        options = g_variant_get_child_value (parameters, 0);
     }
   else if (strcmp (interface, "org.freedesktop.portal.ScreenCast") == 0)
     {
